@@ -61,7 +61,7 @@ typedef struct MenuItem {
 typedef struct Menu {
     const char *title;
 
-    MenuItem items[16];
+    MenuItem items[18];
 } Menu;
 
 extern u32 menuCombo;
@@ -79,6 +79,8 @@ u32 waitInput(void);
 
 u32 waitComboWithTimeout(s32 msec);
 u32 waitCombo(void);
+
+void ClearScreenQuickly(void);
 
 bool menuCheckN3ds(void);
 u32 menuCountItems(const Menu *menu);

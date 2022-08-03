@@ -151,6 +151,14 @@ static float batteryPercentage;
 static float batteryVoltage;
 static u8 batteryTemperature;
 
+void ClearScreenQuickly(void)
+{
+  Draw_Lock();
+  Draw_ClearFramebuffer();
+  Draw_FlushFramebuffer();
+  Draw_Unlock();
+}
+
 static Result menuUpdateMcuInfo(void)
 {
     Result res = 0;
@@ -261,6 +269,8 @@ void menuThreadMain(void)
             menuEnter();
             if(isN3DS) N3DSMenu_UpdateStatus();
             PluginLoader__UpdateMenu();
+            PluginChecker_UpdateMenu();
+            RemoveDetector_UpdateMenu();
             menuShow(&rosalinaMenu);
             menuLeave();
         }

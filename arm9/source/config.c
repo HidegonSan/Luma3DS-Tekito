@@ -336,7 +336,17 @@ static int configIniHandler(void* user, const char* section, const char* name, c
         } else if (strcmp(name, "plugin_loader_enabled") == 0) {
             bool opt;
             CHECK_PARSE_OPTION(parseBoolOption(&opt, value));
-            cfg->pluginLoaderFlags = opt ? cfg->pluginLoaderFlags | 1 : cfg->pluginLoaderFlags & ~1;
+            cfg->pluginLoaderFlags = opt ? cfg->pluginLoaderFlags | (1 << 0) : cfg->pluginLoaderFlags & ~(1 << 0);
+            return 1;
+        } else if (strcmp(name, "plugin_checker_enabled") == 0) {
+            bool opt;
+            CHECK_PARSE_OPTION(parseBoolOption(&opt, value));
+            cfg->pluginLoaderFlags = opt ? cfg->pluginLoaderFlags | (1 << 1) : cfg->pluginLoaderFlags & ~(1 << 1);
+            return 1;
+        } else if (strcmp(name, "remove_detector_enabled") == 0) {
+            bool opt;
+            CHECK_PARSE_OPTION(parseBoolOption(&opt, value));
+            cfg->pluginLoaderFlags = opt ? cfg->pluginLoaderFlags | (1 << 2) : cfg->pluginLoaderFlags & ~(1 << 2);
             return 1;
         } else if (strcmp(name, "screen_filters_cct") == 0) {
             s64 opt;
@@ -422,6 +432,7 @@ static size_t saveLumaIniConfigToStr(char *out)
         pinNumDigits, n3dsCpuStr,
 
         cfg->hbldr3dsxTitleId, rosalinaMenuComboStr, (int)(cfg->pluginLoaderFlags & 1),
+        (int)((cfg->pluginLoaderFlags & (1 << 1)) >> 1), (int)((cfg->pluginLoaderFlags & 1 << 2) >> 2),
         (int)cfg->screenFiltersCct, (int)cfg->ntpTzOffetMinutes,
 
         (int)CONFIG(PATCHUNITINFO), (int)CONFIG(DISABLEARM11EXCHANDLERS),

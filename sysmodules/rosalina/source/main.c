@@ -230,7 +230,7 @@ static void handleRestartHbAppNotification(u32 notificationId)
 
 static const ServiceManagerServiceEntry services[] = {
     { "hb:ldr", 2, HBLDR_HandleCommands, true },
-    { "plg:ldr", 1, PluginLoader__HandleCommands, true },
+    { "plg:ldr", 2, PluginLoader__HandleCommands, true },
     { NULL },
 };
 

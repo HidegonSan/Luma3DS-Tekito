@@ -49,6 +49,8 @@ Menu rosalinaMenu = {
         { "Change screen brightness", METHOD, .method = &RosalinaMenu_ChangeScreenBrightness },
         { "Cheats...", METHOD, .method = &RosalinaMenu_Cheats },
         { "", METHOD, .method = PluginLoader__MenuCallback},
+        { "", METHOD, .method = PluginChecker_MenuCallback},
+        { "", METHOD, .method = RemoveDetector_MenuCallback},
         { "Process list", METHOD, .method = &RosalinaMenu_ProcessList },
         { "Debugger options...", MENU, .menu = &debuggerMenu },
         { "System configuration...", MENU, .menu = &sysconfigMenu },
@@ -57,11 +59,136 @@ Menu rosalinaMenu = {
         { "Miscellaneous options...", MENU, .menu = &miscellaneousMenu },
         { "Power off", METHOD, .method = &RosalinaMenu_PowerOff },
         { "Reboot", METHOD, .method = &RosalinaMenu_Reboot },
+        { "Change Luma3DS Version (To v9.1)", METHOD, .method = &RosalinaMenu_ChangeVersion },
         { "Credits", METHOD, .method = &RosalinaMenu_ShowCredits },
         { "Debug info", METHOD, .method = &RosalinaMenu_ShowDebugInfo, .visibility = &rosalinaMenuShouldShowDebugInfo },
         {},
     }
 };
+
+Result CopyFileInSdmc(const char *src, const char *dst)
+{
+  FS_Archive  sdmcArchive;
+  u64         remaining;
+  u64         total;
+  Result      res;
+  IFile       srcFile;
+  IFile       dstFile;
+  const u32   bufferSize = 2048;
+  u8          buffer[bufferSize];
+
+  // Open the sdmc archive
+  if(R_FAILED(res = FSUSER_OpenArchive(&sdmcArchive, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, ""))))
+    return res;
+
+  // Open the source file
+  if(R_FAILED(res = IFile_OpenFromArchive(&srcFile, sdmcArchive, fsMakePath(PATH_ASCII, src), FS_OPEN_READ)))
+  {
+    FSUSER_CloseArchive(sdmcArchive);
+    return res;
+  }
+
+  // Open the destination file
+  if(R_FAILED(res = IFile_OpenFromArchive(&dstFile, sdmcArchive, fsMakePath(PATH_ASCII, dst), FS_OPEN_WRITE)))
+  {
+    IFile_Close(&srcFile);
+    FSUSER_CloseArchive(sdmcArchive);
+    return res;
+  }
+
+  // Close the sdmc archive
+  FSUSER_CloseArchive(sdmcArchive);
+
+  // Clear the destination file
+  if(R_FAILED(res = IFile_SetSize(&dstFile, 0)))
+  {
+    IFile_Close(&srcFile);
+    IFile_Close(&dstFile);
+    return res;
+  }
+
+  // Get the file size
+  if(R_FAILED(IFile_GetSize(&srcFile, &remaining)))
+  {
+    IFile_Close(&srcFile);
+    IFile_Close(&dstFile);
+    return res;
+  }
+
+  // Copy the file
+  while(remaining != 0)
+  {
+    u64 size = remaining > bufferSize ? bufferSize : remaining;
+
+    if(R_FAILED(IFile_Read(&srcFile, &total, (void *)buffer, size)) || R_FAILED(IFile_Write(&dstFile, &total, (void *)buffer, total, 0)))
+    {
+      IFile_Close(&srcFile);
+      IFile_Close(&dstFile);
+      return res;
+    }
+    remaining -= total;
+  }
+
+  // Close the files
+  IFile_Close(&srcFile);
+  IFile_Close(&dstFile);
+
+  return 0;
+}
+
+void RosalinaMenu_ChangeVersion(void)
+{
+  u32 keys;
+  const char *srcParh = "/luma/firms/v9.1.firm";
+
+  ClearScreenQuickly();
+
+  do
+  {
+    Draw_Lock();
+    Draw_DrawString(10, 10, COLOR_TITLE, "Version changer");
+    Draw_DrawString(10, 30, COLOR_WHITE, "Press A to change the version, press B to go back.");
+    Draw_FlushFramebuffer();
+    Draw_Unlock();
+
+    keys = waitInputWithTimeout(1000);
+
+    if(keys & KEY_A)
+    {
+      ClearScreenQuickly();
+
+      Draw_Lock();
+      Draw_DrawString(10, 10, COLOR_TITLE, "Change luma3DS version");
+      Draw_DrawString(10, 30, COLOR_WHITE, "Please wait...");
+      Draw_FlushFramebuffer();
+      Draw_Unlock();
+
+      // Change the boot.firm
+      if(R_FAILED(CopyFileInSdmc(srcParh, "/boot.firm")))
+      {
+        do
+        {
+          Draw_Lock();
+          Draw_DrawString(10, 10, COLOR_TITLE, "Error");
+          Draw_DrawString(10, 30, COLOR_WHITE, "Failed to change the version. Press A to go back.");
+          Draw_FlushFramebuffer();
+          Draw_Unlock();
+              
+          keys = waitInputWithTimeout(1000);
+
+          if(keys & KEY_A)
+          {
+            return;
+          }
+        } while(!menuShouldExit);
+      }
+
+      // Reboot the 3ds
+      menuLeave();
+      APT_HardwareResetAsync();
+    }
+  } while(!menuShouldExit);
+}
 
 bool rosalinaMenuShouldShowDebugInfo(void)
 {

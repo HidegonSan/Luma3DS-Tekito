@@ -45,6 +45,9 @@
 #define MULTICONFIG(a)   ((cfg->multiConfig >> (2 * (a))) & 3)
 #define BOOTCONFIG(a, b) ((cfg->bootConfig >> (a)) & (b))
 
+extern bool PluginChecker_isEnabled;
+extern bool RemoveDetector_isEnabled;
+
 enum singleOptions
 {
     AUTOBOOTEMU = 0,
@@ -298,6 +301,7 @@ static size_t saveLumaIniConfigToStr(char *out, const CfgData *cfg)
         pinNumDigits, n3dsCpuStr,
 
         cfg->hbldr3dsxTitleId, rosalinaMenuComboStr, (int)(cfg->pluginLoaderFlags & 1),
+        (int)((cfg->pluginLoaderFlags & (1 << 1)) >> 1), (int)((cfg->pluginLoaderFlags & 1 << 2) >> 2),
         (int)cfg->screenFiltersCct, (int)cfg->ntpTzOffetMinutes,
 
         (int)CONFIG(PATCHUNITINFO), (int)CONFIG(DISABLEARM11EXCHANDLERS),
@@ -349,7 +353,7 @@ Result  SaveSettings(void)
     configData.splashDurationMsec = splashDurationMsec;
     configData.hbldr3dsxTitleId = Luma_SharedConfig->hbldr_3dsx_tid;
     configData.rosalinaMenuCombo = menuCombo;
-    configData.pluginLoaderFlags = PluginLoader__IsEnabled();
+    configData.pluginLoaderFlags = PluginLoader__IsEnabled() | (PluginChecker_isEnabled << 1) | (RemoveDetector_isEnabled << 2);
     configData.screenFiltersCct = (u16)screenFiltersCurrentTemperature;
     configData.ntpTzOffetMinutes = (s16)lastNtpTzOffset;
 
