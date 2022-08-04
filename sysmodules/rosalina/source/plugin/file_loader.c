@@ -326,7 +326,6 @@ bool     TryToLoadPlugin(Handle process)
     {
       u64 remaining = fileSize - 8;
       u64 total;
-      u32 fileOffset = plugin.pos;
       u8 risk = 0;
       const u32 bufferSize = 2000;
       char fileBuf[bufferSize];
@@ -407,7 +406,6 @@ bool     TryToLoadPlugin(Handle process)
               if(keys & KEY_A)
               {
                 menuLeave();
-                plugin.pos = fileOffset;
                 goto nextProcess;
               }
 
