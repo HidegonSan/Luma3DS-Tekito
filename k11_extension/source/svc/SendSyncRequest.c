@@ -255,6 +255,37 @@ Result SendSyncRequestHook(Handle handle)
 
                 break;
             }
+
+            // FSUSER_DeleteFile, FSUSER_DeleteDirectoryRecursively for Remove-Detector
+            case 0x8040142:
+            case 0x8070142:
+            {
+              SessionInfo *info = SessionInfo_Lookup(clientSession->parentSession);
+              if(info != NULL && strcmp(info->name, "fs:USER") == 0)
+              {
+                Handle plgLdrHandle;
+                SessionInfo *info = SessionInfo_FindFirst("plg:ldr");
+                if(info != NULL && createHandleForThisProcess(&plgLdrHandle, &info->session->clientSession.syncObject.autoObject) >= 0)
+                {
+                  u32 cmdbufData[5];
+                  memcpy(cmdbufData, cmdbuf, sizeof(u32) * 5);
+
+                  cmdbuf[0] = 0xF0000;
+                  res = SendSyncRequest(plgLdrHandle);
+
+                  if (res >= 0 && cmdbuf[2])
+                  {
+                      memcpy(cmdbuf, cmdbufData, sizeof(u32) * 5);
+                      cmdbuf[0] = 0xE01C0;
+
+                      SendSyncRequest(plgLdrHandle);
+                      skip = true;
+                  }
+                  CloseHandle(plgLdrHandle);
+                }
+              }
+              break;
+            }
         }
     }
 

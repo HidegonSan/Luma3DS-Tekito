@@ -24,6 +24,7 @@ void        IR__Unpatch(void);
 
 bool PluginChecker_isEnabled = false;
 bool RemoveDetector_isEnabled = false;
+bool RemoveDetector_isRunning = false;
 
 void        PluginLoader__Init(void)
 {
@@ -512,6 +513,14 @@ void     PluginLoader__HandleCommands(void *_ctx)
             break;
         }
 
+        case 15:
+        {
+            cmdbuf[0] = IPC_MakeHeader(8, 2, 0);
+            cmdbuf[1] = 0;
+            cmdbuf[2] = RemoveDetector_isRunning;
+            break;
+        }
+
         default: // Unknown command
         {
             error(cmdbuf, 0xD900182F);
@@ -615,6 +624,8 @@ void    PluginLoader__HandleKernelEvent(u32 notifId)
         }
         else
         {
+            if(RemoveDetector_isEnabled)
+              RemoveDetector_isRunning = false;
             // Signal plugin that it's about to be swapped
             PLG__NotifyEvent(PLG_ABOUT_TO_SWAP, false);
             // Wait for plugin reply

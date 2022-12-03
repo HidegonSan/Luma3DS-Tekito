@@ -31,7 +31,6 @@ extern bool RemoveDetector_isEnabled;
 
 // pluginLoader.s
 void        gamePatchFunc(void);
-void        gameSvcSendSyncRequestHook(void);
 
 static char *AskForFileName(PluginEntry *entries, u8 count)
 {
@@ -41,10 +40,8 @@ static char *AskForFileName(PluginEntry *entries, u8 count)
 
   menuEnter();
 
-  Draw_Lock();
-  Draw_ClearFramebuffer();
-  Draw_FlushFramebuffer();
-  Draw_Unlock();
+  ClearScreenQuickly();
+
   while (1)
   {
     Draw_Lock();
@@ -68,6 +65,11 @@ static char *AskForFileName(PluginEntry *entries, u8 count)
       if(entries[selected].canBoot)
         break;
     }
+    else if(keys & KEY_B)
+    {
+      menuLeave();
+      APT_HardwareResetAsync();
+    }
     else if(keys & KEY_DOWN)
     {
       if(++selected >= count)
@@ -81,6 +83,7 @@ static char *AskForFileName(PluginEntry *entries, u8 count)
   }
 
   menuLeave();
+
   return entries[selected].name;
 }
 
@@ -179,7 +182,12 @@ static Result   FindPluginFile(u64 tid)
     {
         if(foundPluginCount >= 2)
         {
-          strcpy(filename, AskForFileName(foundPlugins, foundPluginCount));
+          for(u8 i = 0; i < foundPluginCount; i++) {
+            if(foundPlugins[i].canBoot) {
+              strcpy(filename, AskForFileName(foundPlugins, foundPluginCount));
+              break;
+            }
+          }
         }
         u32 len = strlen(g_path);
         filename[256 - len] = 0;
@@ -246,21 +254,6 @@ static char *memstr(char *haystack, const char *needle, int size)
             return p; // found
     }
     return NULL;
-}
-
-static void InstallSendRequestHook(void)
-{
-  u32 codeEnd = (u32)PluginLoaderCtx.memblock.memblock + PluginLoaderCtx.header.exeSize;
-
-  for(u32 *addr = (u32 *)PluginLoaderCtx.memblock.memblock; (u32)addr < codeEnd; addr++)
-  {
-    if(addr[0] == 0xEF000032 && addr[1] == 0xE12FFF1E)
-    {
-      addr[0] = 0xE51FF004; // ldr pc, [pc, #-4]
-      addr[1] = (u32)PA_FROM_VA_PTR(gameSvcSendSyncRequestHook);
-      break;
-    }
-  }
 }
 
 bool     TryToLoadPlugin(Handle process)
@@ -519,17 +512,11 @@ nextProcess:
         game[0] = 0xE51FF004; // ldr pc, [pc, #-4]
         game[1] = (u32)PA_FROM_VA_PTR(gamePatchFunc);
 
-        if(RemoveDetector_isEnabled)
-        {
-          InstallSendRequestHook();
-        }
-
         svcFlushEntireDataCache();
         svcUnmapProcessMemoryEx(CUR_PROCESS_HANDLE, procStart, 0x1000);
     }
     else
         goto exitFail;
-
 
     IFile_Close(&plugin);
     return true;
