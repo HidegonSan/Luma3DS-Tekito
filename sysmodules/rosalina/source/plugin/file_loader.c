@@ -25,6 +25,7 @@ static char        g_path[256];
 static const char *g_dirPath = "/luma/plugins/%016llX";
 static const char *g_defaultPath = "/luma/plugins/default.3gx";
 u64                g_titleId;
+u32                g_pid;
 
 extern bool PluginChecker_isEnabled;
 extern bool RemoveDetector_isEnabled;
@@ -278,6 +279,9 @@ bool     TryToLoadPlugin(Handle process)
     // Get title id
     svcGetProcessInfo((s64 *)&tid, process, 0x10001);
     g_titleId = tid;
+
+    // Get process id
+    svcGetProcessId(&g_pid, process);
 
     memset(pluginHeader, 0, sizeof(PluginHeader));
     pluginHeader->magic = HeaderMagic;

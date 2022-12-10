@@ -18,6 +18,7 @@ static const char *g_title = "Plugin loader";
 PluginLoaderContext PluginLoaderCtx;
 extern u32 g_blockMenuOpen;
 extern u64 g_titleId;
+extern u32 g_pid;
 
 void        IR__Patch(void);
 void        IR__Unpatch(void);
@@ -460,24 +461,20 @@ void     PluginLoader__HandleCommands(void *_ctx)
 
         case 14: // Display warning message
         {
-            if(cmdbuf[4] == PATH_UTF16 && cmdbuf[7] != 0)
+            bool removeFile = false;
+
+            if(RemoveDetector_isRunning && cmdbuf[3] == g_pid)
             {
               u8          fileName[256]; // For UTF-8 file name
               char        textBuf[256];
-              u32         header = cmdbuf[1];
-              FS_Archive  archive;
-              FS_Path     path;
-              Result      ret = 0;
-              bool        removeFile = false;
 
               // Clear buffers
               memset(fileName, 0, 256);
               memset(textBuf, 0, 256);
 
               // Convert the file name Utf16 to Utf8
-              u32 u16NameAddr = ((u32)ctx->memblock.memblock + ctx->header.exeSize) + (cmdbuf[7] - ctx->header.heapVA);
-              path = (FS_Path){PATH_UTF16, cmdbuf[5], (void *)u16NameAddr};
-              utf16_to_utf8((u8 *)fileName, (u16 *)u16NameAddr, cmdbuf[5]);
+              u32 u16NameAddr = ((u32)ctx->memblock.memblock + ctx->header.exeSize) + (cmdbuf[1] - ctx->header.heapVA);
+              utf16_to_utf8((u8 *)fileName, (u16 *)u16NameAddr, cmdbuf[2]);
 
               // Ignore files removed by CTRPF system
               sprintf(textBuf, "/cheats/%016llX.txt", g_titleId);
@@ -488,36 +485,16 @@ void     PluginLoader__HandleCommands(void *_ctx)
               sprintf(textBuf, "/luma/plugins/%016llX/", g_titleId);
               if(strncmp(textBuf, (char *)fileName, strlen(textBuf)) == 0)
                 removeFile = true;
-    
+      
               // Display warning message
               if(!removeFile) 
                 removeFile = WarningMessage((char *)fileName);
-
-              // Remove the file
-              if(removeFile)
-              {
-                if(R_SUCCEEDED(ret = FSUSER_OpenArchive(&archive, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, ""))))
-                {
-                  if(header == IPC_MakeHeader(0x804, 5, 2))
-                  {
-                    ret = FSUSER_DeleteFile(archive, path);
-                  }
-                  else
-                  {
-                    ret = FSUSER_DeleteDirectoryRecursively(archive, path);
-                  }
-                }
-              }
             }
-            
-            break;
-        }
 
-        case 15:
-        {
-            cmdbuf[0] = IPC_MakeHeader(8, 2, 0);
+            cmdbuf[0] = IPC_MakeHeader(14, 2, 0);
             cmdbuf[1] = 0;
-            cmdbuf[2] = RemoveDetector_isRunning;
+            cmdbuf[2] = (u32)removeFile;
+            
             break;
         }
 

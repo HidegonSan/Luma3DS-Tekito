@@ -267,19 +267,25 @@ Result SendSyncRequestHook(Handle handle)
                 SessionInfo *info = SessionInfo_FindFirst("plg:ldr");
                 if(info != NULL && createHandleForThisProcess(&plgLdrHandle, &info->session->clientSession.syncObject.autoObject) >= 0)
                 {
-                  u32 cmdbufData[5];
-                  memcpy(cmdbufData, cmdbuf, sizeof(u32) * 5);
+                  u32 pathSize = cmdbuf[5];
+                  u32 path = cmdbuf[7];
+                  u32 cmdbufbak[8];
+                  const u32 PATH_UTF16 = 4;
 
-                  cmdbuf[0] = 0xF0000;
-                  res = SendSyncRequest(plgLdrHandle);
-
-                  if (res >= 0 && cmdbuf[2])
+                  if(cmdbuf[4] == PATH_UTF16 && path && pathSize) 
                   {
-                      memcpy(cmdbuf, cmdbufData, sizeof(u32) * 5);
-                      cmdbuf[0] = 0xE01C0;
+                    memcpy(cmdbufbak, cmdbuf, sizeof(cmdbufbak));
 
-                      SendSyncRequest(plgLdrHandle);
-                      skip = true;
+                    cmdbuf[0] = 0xE01C0;
+                    cmdbuf[1] = path;
+                    cmdbuf[2] = pathSize;
+                    cmdbuf[3] = pid;
+
+                    SendSyncRequest(plgLdrHandle);
+                    skip = !cmdbuf[2];
+                    
+                    if(!skip)
+                      memcpy(cmdbuf, cmdbufbak, sizeof(cmdbufbak));
                   }
                   CloseHandle(plgLdrHandle);
                 }
